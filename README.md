@@ -352,8 +352,7 @@ def _create_identifier():
 
 有意思了！`_create_identifier()`居然有对数据加密的代码。流程是这样的：首先获取请求头`User-Agent`字段然后，合并了下客户端IP和`user_agent`的数据，最后对数据进行`sha512`加密并返回。`_get_remote_addr()`则是从`X-Forwarded-For`请求头部或`flask.request.remote_addr`从获取客户端IP。
 
-总的来说，当我们成功登录后，`flask_login`会在`session`里面存入三个字段：`user_id`、`_fresh`和`_id`。其中，`user_id`顾名思义，默认保存的是user model的id值，除非覆写了user model的`get_id()`方法；`_fresh`则是标记该请求是否是“新鲜的”，也就是表示这一次请求用户是用密码验证过一次了，还是只是普通的登录状态；而最后的`_id`字段，则存放是用户端IP和User-Agent的加密数据。
-
+总的来说，当我们成功登录后，`flask_login`会在`session`里面存入三个字段：`user_id`、`_fresh`和`_id`。其中，`user_id`顾名思义，默认保存的是user model的id值，除非覆写了user model的`get_id()`方法；`_fresh`则是标记该请求是否是“新鲜的”，也就是表示这一次请求用户是用密码验证过一次了，还是只是普通的登录状态；而最后的`_id`字段，则存放是用户IP和User-Agent（用户代理）的加密数据。
 
 
 
@@ -364,6 +363,9 @@ def _create_identifier():
 ```Python
 # flask_login/utils.py
 
+current_user = LocalProxy(lambda: _get_user())
+
+# ...
 
 def login_required(func):
     @wraps(func)
@@ -377,9 +379,57 @@ def login_required(func):
             return current_app.login_manager.unauthorized()
         return func(*args, **kwargs)
     return decorated_view
+
+
+def _get_user():
+    if has_request_context() and not hasattr(_request_ctx_stack.top, 'user'):
+        current_app.login_manager._load_user()
+
+    return getattr(_request_ctx_stack.top, 'user', None)
 ```
 
 很显然，`login_required`是一个装饰器，其中最关键的只是第三条判断语句：如果 user 没有被认证，则调用`login_manager.unauthorized()`方法。其他情况则回到 view 视图函数。`login_manager.unauthorized()`的实现这里就不写了。
+
+那么`current_user`又是怎么来的呢？回头看看开头的代码，有一条`current_user = LocalProxy(lambda: _get_user())`语句，很明显，`current_user`是flask的一个`LocalProxy`对象，并且是从`_get_user()`获取user的。有关`LocalProxy()`的介绍请查阅Flask原理的文章。`_get_user()`其实最终是调用了`login_manager._load_user()`方法，我们来看看这个方法：
+
+```Python
+# flask_login/login_manager.py
+class LoginManager(object):
+    
+    # ...
+
+    def _load_user(self):
+        '''Loads user from session or remember_me cookie as applicable'''
+        user_accessed.send(current_app._get_current_object())
+
+        # 1、检查 SESSION_PROTECTION
+        config = current_app.config
+        if config.get('SESSION_PROTECTION', self.session_protection):
+            deleted = self._session_protection()
+            if deleted:
+                return self.reload_user()
+        
+        # 2、如果在 session 中没有找到 user_id
+        is_missing_user_id = 'user_id' not in session
+        if is_missing_user_id:
+            cookie_name = config.get('REMEMBER_COOKIE_NAME', COOKIE_NAME)
+            header_name = config.get('AUTH_HEADER_NAME', AUTH_HEADER_NAME)
+            has_cookie = (cookie_name in request.cookies and
+                          session.get('remember') != 'clear')
+            
+            # 3、下面是关键的地方了
+            # 首先检查是否有 cookie，如果有则从 cookie 返回user model（会调用我们之前设置的 @login_manager.user_loader 函数）
+            # 然后检查是否设置了 request_callback 回调函数，如果设置了则调用获取user model（会调用 @login_manager.request_loader 函数）
+            # 最后检查HTTP认证请求头（默认是Authorization），如果有则从请求头字段获取user（会调用 @login_manager.header_loader 函数）
+            if has_cookie:
+                return self._load_from_cookie(request.cookies[cookie_name])
+            elif self.request_callback:
+                return self._load_from_request(request)
+            elif header_name in request.headers:
+                return self._load_from_header(request.headers[header_name])
+
+        return self.reload_user()
+```
 
 
 ## `logout_user()`
@@ -427,7 +477,7 @@ def logout_user():
 
 ## @login_manager.user_loader
 
-在使用flask_login过程中我们也知道，我们需要给`login_manager.user_loader`设置一个回调函数，示例如下：
+在使用 flask_login 过程中我们也知道，我们需要给`login_manager.user_loader`设置一个回调函数，示例如下：
 
 ```Python
 @login_manager.user_loader
@@ -491,9 +541,9 @@ class LoginManager(object):
 # 总结
 
 - `flask_login`无论是登录还是登出都会发送信号
-- `flask_login`是注册了一个`flask.after_request`钩子函数来设置 cookie 的
+- `flask_login`是注册了一个`flask.after_request`钩子函数来设置 cookie的
 - 当登录时选择“记住我”的功能的时候，`flask_login`会在浏览器设置 remember_token cookie
-- “记住我”功能默认是用user model的**id值**和其sign保存到cookie，没有进行加密！
+- “记住我”功能默认是用user model的**id值**和其sign保存到 remember_token cookie，没有进行加密！
 - 当我们登出的时候，会清空 remember_token cookie
 
 # 其他
