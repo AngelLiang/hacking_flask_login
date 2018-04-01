@@ -1,6 +1,6 @@
 # Hacking flask_login
 
-深入学习Flask_Login模块
+深入学习 flask_login 模块
 
 # 学习环境
 
@@ -8,7 +8,7 @@
 - Python3
 - VSCode
 - PowerShell
-- Flask_Login v0.4.1
+- flask_login v0.4.1
 
 # 准备工作
 
@@ -160,8 +160,8 @@ def _secret_key(key=None):
 
 于是，从以上分析我们可以总结如下：
 
-- `flask_login`注册了一个`flask.after_request`钩子函数，来设置cooike
-- 当登录时选择“记住我”的功能的时候，`flask_login`会在浏览器设置cookie
+- `flask_login`注册了一个`flask.after_request`钩子函数，来设置 cookie
+- 当登录时选择“记住我”的功能的时候，`flask_login`会在浏览器设置 cookie
 - “记住我”功能默认是用user model的**id值**和其sign保存到cookie，没有进行加密！
 - 当我们登出的时候，会清空cookie的相关remember_token字段
 
@@ -488,7 +488,13 @@ class LoginManager(object):
 因此，`login_manager.user_loader`的作用就是设置一个把 cookie 数据转换为对应的user model。
 
 
+# 总结
 
+- `flask_login`无论是登录还是登出都会发送信号
+- `flask_login`是注册了一个`flask.after_request`钩子函数来设置 cookie 的
+- 当登录时选择“记住我”的功能的时候，`flask_login`会在浏览器设置 remember_token cookie
+- “记住我”功能默认是用user model的**id值**和其sign保存到cookie，没有进行加密！
+- 当我们登出的时候，会清空 remember_token cookie
 
 # 其他
 
