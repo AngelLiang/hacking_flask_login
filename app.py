@@ -29,6 +29,7 @@ db = SQLAlchemy()
 
 from flask_login import UserMixin, AnonymousUserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
+from itsdangerous import TimedJSONWebSignatureSerializer as Serializer
 
 
 class AnonymousUser(AnonymousUserMixin):
@@ -58,10 +59,35 @@ class User(db.Model, UserMixin):
     def __repr__(self):
         return '<User %r>' % self.username
 
+    def generate_token(self, expiration=60 * 60):
+        """生成token"""
+        s = Serializer(current_app.config["SECRET_KEY"], expiration)
+        # 把 id和username 放进 token
+        token = s.dumps({"id": self.id, "username": self.username}).decode()
+        return token
+
+    @staticmethod
+    def verify_token(token):
+        """验证token"""
+        s = Serializer(current_app.config["SECRET_KEY"])
+        try:
+            data = s.loads(token)
+        except:
+            return None
+
+        return data
+
+    # def get_id(self):
+    #     return self.generate_token()
+
 
 @login_manager.user_loader
 def load_user(user_id):
-    print("user_id", user_id)
+    current_app.logger.debug("user_id: %s" % user_id)
+    # verify_token
+    # data = User.verify_token(user_id)
+    # user_id = data.get("id")
+
     return User.query.get(user_id)
 
 
@@ -85,6 +111,14 @@ def create_app():
 
 
 app = create_app()
+
+
+# after_request 测试
+@app.after_request
+def after_request(response):
+    print("after_request")
+    return response
+
 
 #########################################################################
 # forms
@@ -110,7 +144,8 @@ class LoginForm(FlaskForm):
 #########################################################################
 # views
 import flask
-from flask_login import current_user
+from flask import url_for
+from flask_login import current_user, login_user
 
 
 @app.before_first_request
@@ -155,14 +190,19 @@ def login():
     if form.validate_on_submit():
         # Login and validate the user.
         user = User.query.filter_by(username=form.username.data).first()
-        # user should be an instance of your `User` class
-        login_user(user)
-
-        flask.flash('Logged in successfully.')
-
-        return flask.redirect("/")
+        # 验证密码
+        if user.verify_password(form.password.data):
+            # 登录
+            login_user(user, form.remember_me.data)
+            return flask.redirect(url_for("login_test"))
     # return render_template('login.html', form=form)
     return flask.render_template_string(login_html, form=form)
+
+
+@app.route('/login_test', methods=['GET'])
+@login_required
+def login_test():
+    return 'Hello {}!'.format(current_user.username)
 
 
 @app.route('/logout', methods=['GET', 'POST'])
