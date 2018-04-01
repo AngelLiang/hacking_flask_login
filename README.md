@@ -545,10 +545,10 @@ class LoginManager(object):
 # 总结
 
 - `flask_login`无论是登录还是登出都会发送信号；
-- `flask_login`是注册了一个`flask.after_request`钩子函数来设置 cookie的；
+- `flask_login`是注册了一个`flask.after_request`钩子函数来设置 cookie 的；
 - 当登录时选择“记住我”的功能的时候，`flask_login`会在浏览器设置 remember_token cookie；
 - “记住我”功能默认是用user model的**id值**和其sign保存到 remember_token cookie，没有进行加密！
-- 当我们登出的时候，会清空 remember_token cookie
+- 当我们登出的时候，会清空 remember_token cookie;
 - `flask_login`认证链是先检查 cookie，如果有则直接返回user model；然后检查是否注册了`login_manager.request_loader`，同样如果可以调用则直接返回user model；最后如果有HTTP认证请求头和`login_manager.header_loader`则进行最后的认证；
 
 # 其他
