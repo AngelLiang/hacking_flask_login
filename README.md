@@ -431,6 +431,8 @@ class LoginManager(object):
         return self.reload_user()
 ```
 
+`_load_user()`方法是怎么获取user model呢？如上面代码所示，有一个“认证链”：首先检查是否有 cookie，如果有则从 cookie 返回user model，也就是我们之前给`@login_manager.user_loader`设置的函数；然后检查是否设置了 `request_callback` 回调函数，如果设置了则调用获取user model（`@login_manager.request_loader` 函数）；最后检查HTTP认证请求头（默认是`Authorization`），如果有则从请求头字段获取user（会调用 `@login_manager.header_loader` 函数）。
+
 
 ## `logout_user()`
 
