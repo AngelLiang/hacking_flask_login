@@ -13,6 +13,10 @@
 # 准备工作
 
 ```PS
+# 下载
+git clone git@github.com:AngelLiang/hacking_flask_login.git
+cd hacking_flask_login
+
 # 搭建虚拟环境
 python3 -m venv ./venv
 # 启动venv
@@ -150,9 +154,9 @@ def _secret_key(key=None):
 
 这里很有意思了！`encode_cookie()`调用`_cookie_digest()`，`_cookie_digest()`对传进来的数据`payload`进行**hmac_sha512**加密，然后返回一个`<payload>|<payload-sign>`的字符串。也就是说，我们客户端保存的cooike的data字段，是经过**hmac_sha512**签名（sign）的！下图测试的时候的cooke：`1|d72f9ce127c036c9300bc985da622b2aebb6dc9453ec42f5796ee87d40c3e13c1f2d8d67fb5424b81c17f290fd98817bd1c1603433ae1890cad78f47aa7d87f4`
 
-![index](screenshot\login_remember_me.png)
+![index](screenshot/login_remember_me.png)
 
-![index](screenshot\logout_remember_me.png)
+![index](screenshot/logout_remember_me.png)
 
 于是，从以上分析我们可以总结如下：
 
@@ -163,9 +167,9 @@ def _secret_key(key=None):
 
 现在，还有一个问题，如果开发者要自己的注册`flask.after_request`钩子函数，会不会覆盖掉`flask_login`注册的钩子函数呢？我查了一下资料并做了下测试，结果是多虑了。因为`flask.after_request`用一个队列保存注册进来的钩子函数，之后flask应该会对这个函数队列进行遍历调用。这个队列，我就称之为“钩子函数链”。
 
-![index](screenshot\index.png)
+![index](screenshot/index.png)
 
-![login](screenshot\login.png)
+![login](screenshot/login.png)
 
 ## `login_user()`
 
@@ -419,7 +423,7 @@ def logout_user():
     return True
 ```
 
-![logout](screenshot\logout.png)
+![logout](screenshot/logout.png)
 
 ## @login_manager.user_loader
 
