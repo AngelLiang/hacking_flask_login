@@ -33,6 +33,8 @@ python3 app.py
 
 本文不是一篇入门文章，所以需要读者有使用过Flask_Login的经验。另外还需要一点Web开发的知识，比如cookie、session、MVT（Model-View-Template）的设计模式等等。
 
+首先说明一下， flask 的 session 并不是单纯的把变量保存在服务端，flask还会根据 session 的值设置 cookie，然后发送到客户端，具体分析请参考：[flask 源码解析：session](http://python.jobbole.com/87450/)
+
 下面我们开始来深入分析flask_login。
 
 ## `LoginManager.init_app()`

@@ -101,6 +101,7 @@ def create_app():
         "SECRET_KEY"] = os.environ.get('SECRET_KEY') or 'hard to guess string'
     app.config["SQLALCHEMY_DATABASE_URI"] = 'sqlite:///' + os.path.join(
         curr_dir, 'data-dev.sqlite')
+    app.config["WTF_CSRF_ENABLED"] = False
     login_manager.init_app(app)
     bootstrap.init_app(app)
 
